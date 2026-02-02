@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2 class="text-teal fw-bold">💊 Medication Management</h2>
+        <p class="text-muted">Track your schedule at minute-level precision.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Add New Medication -->
+    <div class="col-md-5">
+        <div class="card h-100 sidebar-sticky">
+            <div class="card-header bg-white border-bottom-0 pb-0">
+                <h5 class="mb-0 fw-bold">Add New Schedule</h5>
+                <p class="text-muted small">Configure precise timings.</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="medication-form" action="{{ url_for('medications') }}" novalidate>
+                    
+                    <!-- Basic Info -->
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Medicine Name</label>
+                        <input type="text" name="name" id="name" class="form-control" required placeholder="e.g. Amoxicillin" minlength="2">
+                        <div class="invalid-feedback">
+                            Please provide a valid medicine name.
+                        </div>
+                    </div>
+                    
+                    <!-- Dosage & Freq -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="dosage" class="form-label">Dosage</label>
+                            <input type="text" name="dosage" id="dosage" class="form-control" required placeholder="e.g. 500mg">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="frequency" class="form-label">Type</label>
+                            <select name="frequency" id="frequency" class="form-select">
+                                <option value="Daily">Daily</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="As Needed">As Needed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Times -->
+                    <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between align-items-center">
+                            Scheduled Times
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-time-btn">
+                                <i data-feather="plus" style="width: 14px;"></i> Add Time
+                            </button>
+                        </label>
+                        <div id="times-container">
+                            <!-- JS adds time inputs here -->
+                        </div>
+                        <small class="text-muted">Select exact time (HH:MM)</small>
+                    </div>
+
+                    <!-- Dates & Duration -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ now }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="duration" class="form-label">Duration (Days)</label>
+                            <input type="number" name="duration" id="duration" class="form-control" value="7" min="1" required>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Notifications -->
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="email_notification" id="email_notification">
+                        <label class="form-check-label" for="email_notification">Enable Email Reminders</label>
+                    </div>
+
+                    <div class="mb-3" id="notification_email_container" style="display: none;">
+                        <label for="notification_email" class="form-label">Email Address</label>
+                        <input type="email" name="notification_email" id="notification_email" class="form-control" placeholder="you@example.com">
+                        <div class="invalid-feedback">Valid email required for notifications.</div>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" name="calendar" id="calendar">
+                        <label class="form-check-label" for="calendar">
+                            Sync to Google Calendar
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i data-feather="save" class="me-2"></i> Save Schedule
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active List -->
+    <div class="col-md-7">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold">Active Schedules</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% if reminders %}
+                        {% for r in reminders %}
+                        <div class="list-group-item p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1 fw-bold text-teal">{{ r.medicine_name }} <span class="badge bg-light text-dark border ms-2">{{ r.dosage }}</span></h6>
+                                    
+                                    <div class="mt-2">
+                                        {% for time in r.times %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary me-1 mb-1">⏰ {{ time }}</span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="small text-muted mt-1">
+                                        <i data-feather="calendar" style="width: 12px;"></i> {{ r.start_date }} ➔ {{ r.end_date }}
+                                    </div>
+                                    
+                                    {% if r.email_notification %}
+                                    <div class="small text-success mt-1">
+                                        <i data-feather="mail" style="width: 12px;"></i> email: {{ r.notification_email }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-light text-muted">{{ r.frequency }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div style="font-size: 3rem; opacity: 0.2">📅</div>
+                            <p class="text-muted mt-2">No active medication schedules.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/scheduler.js') }}"></script>
+{% endblock %}

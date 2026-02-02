@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    #map { height: 100%; min-height: 500px; border-radius: 12px; z-index: 1; }
+    .leaflet-popup-content-wrapper { border-radius: 8px; font-family: 'Inter', sans-serif; }
+    .leaflet-popup-content h6 { margin-bottom: 5px; color: var(--primary-teal); font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <h2 class="text-teal fw-bold">🏥 Pharmacy Locator</h2>
+        <p class="text-muted">Find nearby pharmacies tailored to your prescription.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Search Area</h5>
+                <form id="searchForm">
+                    <div class="mb-3">
+                        <label class="form-label">Search Radius (meters)</label>
+                        <select id="radius" class="form-select">
+                            <option value="1000">1 km</option>
+                            <option value="5000" selected>5 km</option>
+                            <option value="10000">10 km</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" onclick="findPharmacies()">
+                        <i data-feather="map-pin" class="me-2"></i> Find Near Me
+                    </button>
+                    <div id="status" class="mt-2 text-center small text-muted"></div>
+                </form>
+                
+                <hr>
+                
+                <div id="resultsList" class="list-group list-group-flush overflow-auto" style="max-height: 400px;">
+                    <!-- Results populated by JS -->
+                    <div class="text-center text-muted py-4">Results will act as location list</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body p-0">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+let map = null;
+let markers = [];
+let userMarker = null;
+
+// Initialize empty map
+function initMap() {
+    map = L.map('map').setView([20.5937, 78.9629], 5); // Default center India
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+}
+
+document.addEventListener('DOMContentLoaded', initMap);
+
+function findPharmacies() {
+    const status = document.getElementById('status');
+    const list = document.getElementById('resultsList');
+    
+    if (!navigator.geolocation) {
+        status.textContent = "Geolocation is not supported by your browser.";
+        return;
+    }
+
+    status.textContent = "Locating...";
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const radius = document.getElementById('radius').value;
+
+        // Update Map User Location
+        if (userMarker) map.removeLayer(userMarker);
+        map.setView([lat, lng], 14);
+        userMarker = L.marker([lat, lng]).addTo(map)
+            .bindPopup("<b>You are here</b>").openPopup();
+
+        status.textContent = "Searching nearby...";
+
+        try {
+            const res = await fetch('/api/pharmacy/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({lat, lng, radius})
+            });
+            const data = await res.json();
+            
+            // Clear previous markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            list.innerHTML = '';
+
+            if (data.results && data.results.length > 0) {
+                const bounds = L.latLngBounds();
+                bounds.extend([lat, lng]);
+
+                data.results.forEach(p => {
+                    // Update List
+                    list.innerHTML += `
+                    <div class="list-group-item list-group-item-action" onclick="focusOnMap(${p.latitude}, ${p.longitude})" style="cursor: pointer;">
+                        <h6 class="mb-1 fw-bold text-teal">${p.name}</h6>
+                        <div class="mt-2 text-muted small">
+                            <i data-feather="map-pin" style="width: 12px;"></i> ${p.address}
+                        </div>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <span class="badge bg-light text-dark border">
+                                ${(p.distance / 1000).toFixed(1)} km
+                            </span>
+                             <a href="https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}" target="_blank" class="btn btn-outline-primary btn-sm py-0" style="font-size: 0.7rem;">
+                                Go
+                            </a>
+                        </div>
+                    </div>
+                    `;
+
+                    // Add Marker
+                    const marker = L.marker([p.latitude, p.longitude])
+                        .addTo(map)
+                        .bindPopup(`
+                            <h6>${p.name}</h6>
+                            <p class="mb-1 small">${p.address}</p>
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}" target="_blank" class="btn btn-primary btn-sm w-100 mt-2">Navigate</a>
+                        `);
+                    markers.push(marker);
+                    bounds.extend([p.latitude, p.longitude]);
+                });
+                
+                feather.replace();
+                map.fitBounds(bounds, {padding: [50, 50]});
+                status.textContent = `Found ${data.results.length} pharmacies.`;
+            } else {
+                list.innerHTML = '<div class="text-center p-3">No pharmacies found.</div>';
+                status.textContent = "Search complete.";
+            }
+        } catch (e) {
+            status.textContent = "Error fetching data.";
+            console.error(e);
+        }
+    }, () => {
+        status.textContent = "Unable to retrieve your location.";
+    });
+}
+
+function focusOnMap(lat, lng) {
+    map.setView([lat, lng], 16);
+    // Find approximate marker to open popup
+    markers.forEach(m => {
+        const mLat = m.getLatLng().lat;
+        const mLng = m.getLatLng().lng;
+        if (Math.abs(mLat - lat) < 0.0001 && Math.abs(mLng - lng) < 0.0001) {
+            m.openPopup();
+        }
+    });
+}
+</script>
+{% endblock %}

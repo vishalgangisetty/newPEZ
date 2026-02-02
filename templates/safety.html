@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8 text-center">
+        <h2 class="text-teal fw-bold">🛡️ Medication Safety</h2>
+        <p class="text-muted">Check Over-The-Counter medicines for safety and interactions.</p>
+        
+        <form class="mt-4" method="GET">
+            <div class="input-group input-group-lg shadow-sm">
+                <input type="text" name="q" class="form-control border-0" placeholder="Search for a medicine (e.g. Aspirin)..." value="{{ query if query }}">
+                <button class="btn btn-primary px-4" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        {% if query %}
+            <h5 class="mb-3">Results for "{{ query }}"</h5>
+        {% else %}
+            <h5 class="mb-3">Common Medicines</h5>
+        {% endif %}
+
+        <div class="row g-4">
+            {% if results %}
+                {% for item in results %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary">{{ item.name }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">{{ item.category }}</h6>
+                            <p class="card-text small">{{ item.description }}</p>
+                            
+                            <hr>
+                            
+                            <div class="mb-2">
+                                <span class="badge bg-warning text-dark">⚠️ Side Effects</span>
+                                <p class="small text-muted mt-1">{{ item.side_effects }}</p>
+                            </div>
+                            
+                            <div>
+                                <span class="badge bg-danger">❌ Contraindications</span>
+                                <p class="small text-muted mt-1">{{ item.contraindications }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted">No medicines found matching your query.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

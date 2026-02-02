@@ -1,0 +1,177 @@
+:root {
+    --primary-teal: #008080;
+    --primary-light: #e0f2f1;
+    --primary-dark: #004d4d;
+    --accent: #20c997;
+    --bg-light: #f8f9fa;
+    --text-dark: #343a40;
+    --text-muted: #6c757d;
+    --danger: #dc3545;
+    --success: #198754;
+}
+
+body {
+    background-color: var(--bg-light);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.brand-logo {
+    font-weight: 700;
+    color: var(--primary-teal) !important;
+    font-size: 1.5rem;
+}
+
+.main-container {
+    flex: 1;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    background: white;
+    margin-bottom: 1.5rem;
+}
+
+/* Form Styles */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-teal);
+    box-shadow: 0 0 0 0.25rem rgba(0, 128, 128, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--primary-teal);
+    border-color: var(--primary-teal);
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.btn-outline-primary {
+    color: var(--primary-teal);
+    border-color: var(--primary-teal);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-teal);
+    color: white;
+}
+
+/* Time Inputs */
+.time-entry .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+.time-entry .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Dashboard Sidebar */
+.sidebar-sticky {
+    position: sticky;
+    top: 5rem;
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Accessibility */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Filter Badges */
+.filter-badge.active {
+    background-color: var(--primary-teal);
+    color: white;
+}
+
+/* Auth Card */
+.auth-card {
+    max-width: 450px;
+    margin: 4rem auto;
+    padding: 2rem;
+    border-radius: 16px;
+}
+
+/* Upload Area */
+.upload-area {
+    border: 2px dashed #cbd5e0;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-teal);
+    background-color: var(--primary-light);
+}
+
+.upload-area input[type="file"] {
+    cursor: pointer;
+}
+
+/* Message Bubbles */
+.message {
+    padding: 10px 15px;
+    border-radius: 15px;
+    margin-bottom: 10px;
+    max-width: 80%;
+    font-size: 0.95rem;
+}
+.message.user {
+    background-color: var(--primary-teal);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 5px;
+}
+.message.ai {
+    background-color: #f1f3f5;
+    color: var(--text-dark);
+    margin-right: auto;
+    border-bottom-left-radius: 5px;
+}
+
+/* Footer */
+footer {
+    background: white;
+    margin-top: auto;
+}
