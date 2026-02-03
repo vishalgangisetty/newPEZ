@@ -15,6 +15,7 @@ from utils.extractor import PrescriptionExtractor
 from utils.vector_store import VectorStoreManager
 from utils.memory import MemoryManager
 from services.scheduler import SchedulerService
+from services.mail_service import MailService
 from services.validator import Validator
 
 try:
@@ -39,6 +40,7 @@ otc_manager = OTCManager()
 extractor = PrescriptionExtractor()
 vector_store = VectorStoreManager()
 memory_manager = MemoryManager()
+mail_service = MailService()
 scheduler_service = SchedulerService() # Starts background scheduler
 
 rag_graph = None
@@ -173,7 +175,43 @@ def dashboard():
         active_p = next((p for p in prescriptions if p['id'] == active_id), None)
         if active_p:
             sess_id = memory_manager.get_or_create_session(user, active_id)
-            active_p['details'] = memory_manager.get_session_details(sess_id)
+            details_text = memory_manager.get_session_details(sess_id)
+            active_p['details'] = details_text
+            
+            # Parse details for card view
+            med_list = []
+            if details_text:
+                lines = details_text.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('- '):
+                        try:
+                            # Format: "- Name Dosage: M:1 A:0 N:1"
+                            content = line[2:] # Strip "- "
+                            if ':' in content:
+                                parts = content.split(':', 1)
+                                name_dose = parts[0].strip()
+                                timing_str = parts[1].strip()
+                                
+                                # Parse timing
+                                timing = {'M': 0, 'A': 0, 'N': 0}
+                                for t_part in timing_str.split():
+                                    if ':' in t_part:
+                                        k, v = t_part.split(':')
+                                        if k in timing:
+                                            timing[k] = v
+                                
+                                med_list.append({
+                                    'name_dosage': name_dose,
+                                    'timing': timing
+                                })
+                            else:
+                                # Fallback if no colon
+                                med_list.append({'name_dosage': content, 'timing': None})
+                        except Exception as e:
+                            logger.error(f"Error parsing med line: {line} - {e}")
+            
+            active_p['med_list'] = med_list
             chat_history = memory_manager.get_history(sess_id)
 
     return render_template('dashboard.html', 
@@ -181,6 +219,27 @@ def dashboard():
                            prescriptions=prescriptions, 
                            active_p=active_p, 
                            chat_history=chat_history)
+
+@app.route('/api/prescription/delete', methods=['POST'])
+@login_required
+def delete_prescription():
+    data = request.json
+    p_id = data.get('id')
+    
+    if not p_id:
+        return jsonify({'error': 'ID required'}), 400
+        
+    try:
+        # Delete from DB
+        success = memory_manager.delete_session(session['user'], p_id)
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'Prescription not found'}), 404
+            
+    except Exception as e:
+        logger.error(f"Delete Prescription Error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/chat', methods=['POST'])
 @login_required
@@ -275,10 +334,60 @@ def medications():
                 logger.error(f"Medication Add Error: {e}")
             
     reminders = reminder_manager.get_user_reminders(session['user'])
-    # Commenting out stats for now if not needed or problematic, 
-    # but the User request implied UI layout fixes so keeping it simple is better.
-    # We'll just pass reminders.
-    return render_template('medications.html', user=session['user'], reminders=reminders, now=datetime.now().strftime("%Y-%m-%d"))
+    todays_doses = reminder_manager.get_todays_reminders(session['user'])
+    stats = reminder_manager.get_adherence_stats(session['user'])
+    
+    return render_template('medications.html', 
+                           user=session['user'], 
+                           reminders=reminders, 
+                           todays_doses=todays_doses, 
+                           stats=stats,
+                           now=datetime.now().strftime("%Y-%m-%d"))
+
+@app.route('/api/medication/status', methods=['POST'])
+@login_required
+def update_medication_status():
+    data = request.json
+    action = data.get('action') # 'taken' or 'skipped'
+    med_name = data.get('medicine_name')
+    time = data.get('scheduled_time')
+    
+    if not all([action, med_name, time]):
+        return jsonify({'error': 'Missing required fields'}), 400
+        
+    try:
+        if action == 'taken':
+            res = reminder_manager.mark_as_taken(session['user'], med_name, time)
+        elif action == 'skipped':
+            res = reminder_manager.mark_as_skipped(session['user'], med_name, time, reason=data.get('reason'))
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+            
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Status Update Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/report/email', methods=['POST'])
+@login_required
+def email_report():
+    data = request.json
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+        
+    try:
+        stats = reminder_manager.get_adherence_stats(session['user'])
+        success = mail_service.send_performance_report(email, stats)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Report sent successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to send report. Check logs.'}), 500
+    except Exception as e:
+        logger.error(f"Email Report Error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/pharmacy')
 @login_required
@@ -289,16 +398,33 @@ def pharmacy():
 @login_required
 def pharmacy_search():
     data = request.json
+    location_query = data.get('location')
     lat = data.get('lat')
     lng = data.get('lng')
     radius = data.get('radius', 5000)
     
-    if not lat or not lng:
-        return jsonify({'error': 'Missing coordinates'}), 400
+    search_lat = lat
+    search_lng = lng
+    
+    # Handle text location search if provided
+    if location_query:
+        coords = pharmacy_locator.geocode_address(location_query)
+        if coords:
+            search_lat, search_lng = coords
+        else:
+            return jsonify({'error': 'Location not found'}), 404
+
+    # Validate coordinates
+    if not search_lat or not search_lng:
+        return jsonify({'error': 'Missing location data'}), 400
         
     try:
-        results = pharmacy_locator.find_nearby_pharmacies(float(lat), float(lng), int(radius))
-        return jsonify({'results': results})
+        results = pharmacy_locator.find_nearby_pharmacies(float(search_lat), float(search_lng), int(radius))
+        # Return results AND the center coordinates used for the map
+        return jsonify({
+            'results': results,
+            'center': {'lat': search_lat, 'lng': search_lng}
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

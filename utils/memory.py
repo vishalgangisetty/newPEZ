@@ -124,3 +124,18 @@ class MemoryManager:
         session = self.sessions.find_one({"session_id": session_id})
         return session.get("otc_result") if session else None
 
+    def delete_session(self, user_id, prescription_id):
+        session = self.sessions.find_one({
+            "user_id": user_id,
+            "prescription_id": prescription_id
+        })
+        if session:
+            session_id = session.get("session_id")
+            # Delete messages
+            self.messages.delete_many({"session_id": session_id})
+            # Delete session
+            self.sessions.delete_one({"_id": session["_id"]})
+            logger.info(f"Deleted session {session_id} for user {user_id}")
+            return True
+        return False
+
