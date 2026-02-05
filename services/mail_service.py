@@ -9,7 +9,7 @@ logger = setup_logger(__name__)
 class MailService:
     def __init__(self):
         self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 587
+        self.smtp_port = 465  # Changed to SSL port
         self.sender_email = Config.EMAIL_SENDER
         self.password = Config.EMAIL_PASSWORD
         self.enabled = bool(self.sender_email and self.password)
@@ -17,7 +17,7 @@ class MailService:
     def send_dose_reminder(self, to_email, medicine_name, dosage, instructions, time_str):
         if not self.enabled:
             logger.warning("Email service disabled: Credentials missing.")
-            return False
+            return False, "Email service disabled in server config."
 
         try:
             subject = f"💊 Reminder: Time for {medicine_name}"
@@ -50,8 +50,8 @@ class MailService:
             msg['Subject'] = subject
             msg.attach(MIMEText(html_content, 'html'))
 
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
+            # Use SMTP_SSL with timeout to prevent hanging
+            with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=15) as server:
                 server.login(self.sender_email, self.password)
                 server.send_message(msg)
             
@@ -135,8 +135,8 @@ class MailService:
             msg['Subject'] = subject
             msg.attach(MIMEText(html_content, 'html'))
 
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
+            # Use SMTP_SSL with timeout to prevent hanging
+            with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=15) as server:
                 server.login(self.sender_email, self.password)
                 server.send_message(msg)
             
