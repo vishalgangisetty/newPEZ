@@ -144,11 +144,34 @@ def dashboard():
                         med_details = []
                         for m in data.get('medicines', []):
                             timing = m.get('timing', {})
-                            timing_str = f"M:{timing.get('morning')} A:{timing.get('afternoon')} N:{timing.get('night')}"
-                            med_details.append(f"- {m.get('name')} {m.get('dosage')}: {timing_str}")
+                            
+                            # Handle Instruction
+                            instr = timing.get('food_timing') or timing.get('instruction', '')
+                            instr_str = f" I:{instr.replace(' ', '_')}" if instr else ""
+                            
+                            # Default to 0 if missing
+                            m_time = timing.get('morning', '0')
+                            a_time = timing.get('afternoon', '0')
+                            n_time = timing.get('night', '0')
+                            
+                            timing_str = f"M:{m_time} A:{a_time} N:{n_time}{instr_str}"
+                            
+                            # Handle dosage/quantity fallback
+                            dose = m.get('dosage') or m.get('quantity') or ''
+                            if dose == 'None': dose = ''
+                            
+                            # Handle Caution
+                            caution = m.get('caution', '')
+                            caution_str = f" C:{caution.replace(' ', '_')}" if caution else ""
+                            
+                            med_details.append(f"- {m.get('name')} {dose}: {timing_str}{caution_str}")
                         
                         meds_str = "\n".join(med_details)
-                        full_text = f"Date: {data.get('date')}\n{meds_str}\nNotes: {data.get('notes')}"
+                        consult_needed = data.get('requires_doctor_consultation', False)
+                        consult_reason = data.get('consultation_reason', '')
+                        consult_str = f"\n⚠️ Doctor Consultation: {consult_reason}" if consult_needed else ""
+                        
+                        full_text = f"Date: {data.get('date')}\n{meds_str}\nNotes: {data.get('notes')}{consult_str}"
                         
                         vector_store.add_prescription(file_id, [full_text], {"filename": filename})
                         
@@ -156,7 +179,7 @@ def dashboard():
                         if data.get('medicines'):
                             title = f"Rx: {data['medicines'][0].get('name')}..."
                             
-                        memory_manager.get_or_create_session(user, file_id, title=title, filename=filename, details=meds_str)
+                        memory_manager.get_or_create_session(user, file_id, title=title, filename=filename, details=meds_str + consult_str)
                         flash("Prescription analyzed successfully!", "success")
                         return redirect(url_for('dashboard', view=file_id))
                     else:
@@ -186,7 +209,7 @@ def dashboard():
                     line = line.strip()
                     if line.startswith('- '):
                         try:
-                            # Format: "- Name Dosage: M:1 A:0 N:1"
+                            # Format: "- Name Dosage: M:1 A:0 N:1 I:Before_Meal"
                             content = line[2:] # Strip "- "
                             if ':' in content:
                                 parts = content.split(':', 1)
@@ -194,10 +217,10 @@ def dashboard():
                                 timing_str = parts[1].strip()
                                 
                                 # Parse timing
-                                timing = {'M': 0, 'A': 0, 'N': 0}
+                                timing = {'M': 0, 'A': 0, 'N': 0, 'I': '', 'C': ''}
                                 for t_part in timing_str.split():
                                     if ':' in t_part:
-                                        k, v = t_part.split(':')
+                                        k, v = t_part.split(':', 1)
                                         if k in timing:
                                             timing[k] = v
                                 
@@ -283,7 +306,8 @@ def medications():
             'start_date': request.form.get('start_date'),
             'email_notification': 'email_notification' in request.form,
             'notification_email': request.form.get('notification_email'),
-            'calendar_sync': 'calendar' in request.form
+            'calendar_sync': 'calendar' in request.form,
+            'instructions': request.form.get('instructions')
         }
         
         # Validation
@@ -301,8 +325,10 @@ def medications():
                     form_data['times'],
                     form_data['duration'],
                     form_data['start_date'],
+
                     email_notification=form_data['email_notification'],
-                    notification_email=form_data['notification_email']
+                    notification_email=form_data['notification_email'],
+                    instructions=form_data['instructions']
                 )
                 
                 if res['success']:

@@ -25,20 +25,23 @@ class PrescriptionExtractor:
             "medicines": [
                 {
                     "name": "Exact name of the tablet/medicine",
-                    "quantity": "How much to take (e.g., 1 tablet, 5ml)",
+                    "dosage": "Strength of the medicine (e.g., 500mg, 10ml)",
                     "timing": {
-                        "morning": "Yes/No",
-                        "afternoon": "Yes/No",
-                        "night": "Yes/No",
-                        "instruction": "Before meal / After meal / Empty stomach / etc."
+                        "morning": "Number of tablets/dose in morning (e.g. '1', '1/2', '0')",
+                        "afternoon": "Number of tablets/dose in afternoon (e.g. '1', '1/2', '0')",
+                        "night": "Number of tablets/dose in night (e.g. '1', '1/2', '0')",
+                        "food_timing": "Before meal / After meal / With food / Empty stomach"
                     },
                     "frequency": "Raw frequency string (e.g., 1-0-1)",
-                    "duration": "For how many days the medicine should be taken"
+                    "duration": "For how many days the medicine should be taken (e.g. '5 days')",
+                    "caution": "Warning string if doctor consultation is needed for this specific medicine (e.g. 'Antibiotic', 'Schedule H'), else empty string"
                 }
             ],
+            "requires_doctor_consultation": true,
+            "consultation_reason": "Provide a brief reason if true, e.g., 'Antibiotics require full course completion', 'Scheduled H drug', or 'High dosage'. If false, null.",
             "notes": "Any special instructions"
         }
-        If a field is missing, use "-". Return ONLY the JSON.
+        If a field is missing, use "-". For timing, use "0" if not applicable. Return ONLY the JSON.
         """
 
         try:
