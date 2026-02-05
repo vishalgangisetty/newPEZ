@@ -9,7 +9,7 @@ logger = setup_logger(__name__)
 class MailService:
     def __init__(self):
         self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 465  # Changed to SSL port
+        self.smtp_port = 587  # Check port 587 again
         self.sender_email = Config.EMAIL_SENDER
         self.password = Config.EMAIL_PASSWORD
         self.enabled = bool(self.sender_email and self.password)
@@ -51,8 +51,9 @@ class MailService:
                 msg['Subject'] = subject
                 msg.attach(MIMEText(html_content, 'html'))
 
-                # Use SMTP_SSL with timeout to prevent hanging
-                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=30) as server:
+                # Use standard SMTP with STARTTLS and timeout
+                with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
+                    server.starttls()
                     server.login(self.sender_email, self.password)
                     server.send_message(msg)
                 
@@ -139,8 +140,9 @@ class MailService:
                 msg['Subject'] = subject
                 msg.attach(MIMEText(html_content, 'html'))
 
-                # Use SMTP_SSL with timeout
-                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=30) as server:
+                # Use standard SMTP with STARTTLS and timeout
+                with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
+                    server.starttls()
                     server.login(self.sender_email, self.password)
                     server.send_message(msg)
                 
