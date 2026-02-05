@@ -56,16 +56,16 @@ class MailService:
                 server.send_message(msg)
             
             logger.info(f"Email sent to {to_email} for {medicine_name}")
-            return True
+            return True, "Email sent successfully"
         
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
-            return False
+            return False, str(e)
 
     def send_performance_report(self, to_email, stats):
         if not self.enabled:
             logger.warning("Email service disabled: Credentials missing.")
-            return False
+            return False, "Email service disabled in server config."
 
         try:
             subject = f"📊 Your Medication Performance Report"
@@ -141,8 +141,8 @@ class MailService:
                 server.send_message(msg)
             
             logger.info(f"Performance report sent to {to_email}")
-            return True
+            return True, "Report sent successfully"
         
         except Exception as e:
             logger.error(f"Failed to send report: {e}")
-            return False
+            return False, str(e)

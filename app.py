@@ -405,12 +405,12 @@ def email_report():
         
     try:
         stats = reminder_manager.get_adherence_stats(session['user'])
-        success = mail_service.send_performance_report(email, stats)
+        success, msg = mail_service.send_performance_report(email, stats)
         
         if success:
-            return jsonify({'success': True, 'message': 'Report sent successfully'})
+            return jsonify({'success': True, 'message': msg})
         else:
-            return jsonify({'success': False, 'message': 'Failed to send report. Check logs.'}), 500
+            return jsonify({'success': False, 'message': f'Failed to send report: {msg}'}), 500
     except Exception as e:
         logger.error(f"Email Report Error: {e}")
         return jsonify({'error': str(e)}), 500
