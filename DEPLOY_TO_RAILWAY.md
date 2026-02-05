@@ -27,7 +27,7 @@ Once the project is created (even if building), go to the **"Variables"** tab of
 | Variable Key | Value (Example/Description) |
 | :--- | :--- |
 | `FLASK_SECRET_KEY` | `pharmEZ_secret_key_2026` (or generate a new random string) |
-| `MONGO_URI` | `mongodb+srv://vishal123:Vishal123@cluster0.kkmfpkn.mongodb.net/?appName=Cluster0` |
+| `MONGO_URI` |  |
 | `GOOGLE_API_KEY` | Your Google Gemini API Key |
 | `PINECONE_API_KEY` | Your Pinecone API Key |
 | `EMAIL_SENDER` | `pharmeez@gmail.com` |
