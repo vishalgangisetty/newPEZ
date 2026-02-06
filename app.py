@@ -226,7 +226,8 @@ def dashboard():
                                 
                                 med_list.append({
                                     'name_dosage': name_dose,
-                                    'timing': timing
+                                    'timing': timing,
+                                    'frequency': f"{timing['M']}-{timing['A']}-{timing['N']}"
                                 })
                             else:
                                 # Fallback if no colon

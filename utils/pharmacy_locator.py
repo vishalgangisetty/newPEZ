@@ -7,15 +7,35 @@ logger = setup_logger(__name__)
 class PharmacyLocator:
     def __init__(self):
         # OpenStreetMap Headers (Required by their Usage Policy)
+        # MUST identify the application uniquely
         self.headers = {
-            'User-Agent': 'pharmEZ-MedicalApp/1.0 (contact@example.com)'
+            'User-Agent': 'PharmEZ-MedicalApp/1.0 (Student Project; vishalgangisetty@example.com)'
         }
     
     def geocode_address(self, address: str) -> Optional[tuple]:
         """
-        Geocode an address using OpenStreetMap Nominatim API
-        Returns: (latitude, longitude) tuple or None
+        Geocode an address using multiple providers for reliability:
+        1. Nominatim (OSM)
+        2. Photon (Komoot)
+        3. OpenMeteo
         """
+        # 1. Try Nominatim (Primary)
+        coords = self._geocode_nominatim(address)
+        if coords:
+            return coords
+            
+        # 2. Try Photon (Fallback 1)
+        logger.warning(f"Nominatim failed for '{address}', trying Photon fallback...")
+        coords = self._geocode_photon(address)
+        if coords:
+            return coords
+
+        # 3. Try OpenMeteo (Fallback 2)
+        logger.warning(f"Photon failed, trying OpenMeteo fallback...")
+        coords = self._geocode_open_meteo(address)
+        return coords
+
+    def _geocode_nominatim(self, address: str) -> Optional[tuple]:
         try:
             url = "https://nominatim.openstreetmap.org/search"
             params = {
@@ -23,20 +43,85 @@ class PharmacyLocator:
                 "format": "json",
                 "limit": 1
             }
-            response = requests.get(url, params=params, headers=self.headers, timeout=10)
-            data = response.json()
+            # Nominatim STRICTLY requires a unique User-Agent with contact info
+            headers = {
+                'User-Agent': 'PharmEZ-Student-App/1.0 (vishal.student@example.com)' 
+            }
+            response = requests.get(url, params=params, headers=headers, timeout=8)
             
-            if data:
+            if response.status_code != 200:
+                logger.warning(f"Nominatim API Status: {response.status_code}")
+                return None
+                
+            data = response.json()
+            if data and isinstance(data, list) and len(data) > 0:
                 lat = float(data[0]['lat'])
                 lon = float(data[0]['lon'])
-                logger.info(f"Geocoded '{address}': {lat}, {lon}")
+                logger.info(f"Nominatim Geocoded '{address}': {lat}, {lon}")
                 return (lat, lon)
-            else:
-                logger.warning("Geocoding failed: No results found.")
-                return None
+            return None
         except Exception as e:
-            logger.error(f"Geocoding error: {str(e)}")
-            return None # Frontend will handle this or default
+            logger.warning(f"Nominatim lookup error: {e}")
+            return None
+
+    def _geocode_photon(self, address: str) -> Optional[tuple]:
+        try:
+            url = "https://photon.komoot.io/api/"
+            params = {
+                "q": address,
+                "limit": 1
+            }
+            # Photon sometimes blocks custom UAs, so use a standard one or the one they recommend
+            # But let's try a standard compatible one to avoid 403
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; PharmEZ/1.0)'
+            }
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            
+            if response.status_code != 200:
+                logger.warning(f"Photon API Status: {response.status_code}")
+                return None
+                
+            data = response.json()
+            if data and data.get('features'):
+                coords = data['features'][0]['geometry']['coordinates']
+                lon = float(coords[0])
+                lat = float(coords[1])
+                logger.info(f"Photon Geocoded '{address}': {lat}, {lon}")
+                return (lat, lon)
+            return None
+        except Exception as e:
+            logger.warning(f"Photon lookup error: {e}")
+            return None
+
+    def _geocode_open_meteo(self, address: str) -> Optional[tuple]:
+        try:
+            url = "https://geocoding-api.open-meteo.com/v1/search"
+            params = {
+                "name": address,
+                "count": 1,
+                "language": "en",
+                "format": "json"
+            }
+            # OpenMeteo is very reliable
+            headers = {'User-Agent': 'Mozilla/5.0 (compatible; PharmEZ/1.0)'}
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            
+            if response.status_code != 200:
+                 logger.warning(f"OpenMeteo API Status: {response.status_code}")
+                 return None
+            
+            data = response.json()
+            if data and 'results' in data and len(data['results']) > 0:
+                res = data['results'][0]
+                lat = float(res['latitude'])
+                lon = float(res['longitude'])
+                logger.info(f"OpenMeteo Geocoded '{address}': {lat}, {lon}")
+                return (lat, lon)
+            return None
+        except Exception as e:
+            logger.error(f"OpenMeteo lookup error: {e}")
+            return None
     
     def find_nearby_pharmacies(
         self,
@@ -67,7 +152,16 @@ class PharmacyLocator:
             """
             
             response = requests.post(overpass_url, data=query, timeout=25)
-            data = response.json()
+            
+            if response.status_code != 200:
+                logger.error(f"Overpass API Error: Status {response.status_code} - {response.text}")
+                return self._get_sample_pharmacies_with_distance(latitude, longitude, radius)
+
+            try:
+                data = response.json()
+            except ValueError:
+                logger.error(f"Overpass Response Error: Expected JSON but got: {response.text[:200]}")
+                return self._get_sample_pharmacies_with_distance(latitude, longitude, radius)
             
             pharmacies = []
             for element in data.get('elements', []):

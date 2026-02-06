@@ -121,14 +121,6 @@ body {
     color: white;
 }
 
-/* Auth Card */
-.auth-card {
-    max-width: 450px;
-    margin: 4rem auto;
-    padding: 2rem;
-    border-radius: 16px;
-}
-
 /* Upload Area */
 .upload-area {
     border: 2px dashed #cbd5e0;
@@ -138,6 +130,73 @@ body {
     background-color: #f8fafc;
     transition: all 0.2s ease;
     cursor: pointer;
+}
+
+/* Auth Card Animations */
+@keyframes slideUpFade {
+    0% { transform: translateY(30px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulseSoft {
+    0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(0, 128, 128, 0)); }
+    50% { transform: scale(1.05); filter: drop-shadow(0 0 10px rgba(0, 128, 128, 0.3)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(0, 128, 128, 0)); }
+}
+
+.auth-card {
+    max-width: 450px;
+    margin: 4rem auto;
+    padding: 2.5rem;
+    border-radius: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    animation: slideUpFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.auth-card .text-center img {
+    animation: pulseSoft 3s infinite ease-in-out;
+    border-radius: 20px; /* Soften corners */
+}
+
+.auth-card .form-control {
+    border: 2px solid #e9ecef;
+    padding: 0.75rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.auth-card .form-control:focus {
+    background-color: white;
+    border-color: var(--primary-teal);
+    box-shadow: 0 5px 15px rgba(0, 128, 128, 0.1);
+    transform: translateY(-2px);
+}
+
+.auth-card .btn {
+    padding: 0.75rem;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.auth-card .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.auth-card .nav-pills .nav-link {
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.auth-card .nav-pills .nav-link.active {
+    background-color: var(--primary-teal);
+    transform: scale(1.05);
 }
 
 .upload-area:hover {

@@ -87,7 +87,11 @@
                                                     <i data-feather="activity" style="width: 18px; height: 18px;"></i>
                                                 </div>
                                                 <div>
-                                                    <h6 class="mb-0 fw-bold text-dark">{{ med.name_dosage }}</h6>
+                                                    <h6 class="mb-0 fw-bold text-dark">{{ med.name_dosage }}
+                                                        {% if med.frequency %}
+                                                            <span class="badge bg-secondary ms-2" style="font-size: 0.75rem;">{{ med.frequency }}</span>
+                                                        {% endif %}
+                                                    </h6>
                                                     {% if med.timing %}
                                                     <div class="mt-1">
                                                         {% if med.timing.M != '0' %}<span class="badge bg-warning text-dark me-1">Morning: {{ med.timing.M }}</span>{% endif %}
